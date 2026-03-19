@@ -137,6 +137,7 @@ def AgeHoHistogram(data, selected = solara.Reactive(None), which = 'age', subset
             itemclick = False,
             itemdoubleclick = False,
             font=dict(size=11),
+            title=dict(text='')
         ),
         margin=dict(l=0, r=25, t=50, b=0),
         title = dict(
