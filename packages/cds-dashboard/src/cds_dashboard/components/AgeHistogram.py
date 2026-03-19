@@ -26,9 +26,11 @@ def aggregrate(dataframe, col):
 def AgeHoHistogram(data, selected = solara.Reactive(None), which = 'age', subset = None, subset_label = None, main_label = None, subset_color = '#0097A7', main_color = '#BBBBBB', title = None, merged_subset= None, merged_color = '#3e3e3e', show_merged = True, include_merged = True):
     # subset is boolean array which take subset of data
     
-    # manual aggregation. instead use pandas groupby and agg
-    # df_agg = DataFrame(aggregrate(data, which)).T
-    # df_agg.sids = df_agg.sids.apply(lambda x:'<br>' + '<br>'.join(x))
+    
+    df = data.copy()
+    df['category'] = 'in_class'
+    
+    
     def sids_agg(sids):
         return '<br>'+ '<br>'.join(sids)
     def name_agg(names):
@@ -39,15 +41,21 @@ def AgeHoHistogram(data, selected = solara.Reactive(None), which = 'age', subset
     
 
     def return_agged(data, which):
-        return data.groupby(which, as_index=False).agg(count=(which,'size'), student_id = ('student_id', sids_agg), name = ('name', name_agg))
+        return data.groupby([which, 'category'], as_index=False).agg(count=(which,'size'), student_id = ('student_id', sids_agg), name = ('name', name_agg))
+
+    
+    merged_mask = np.array(merged_subset) if merged_subset is not None else None
 
     if (merged_subset is not None) and (not include_merged):
-        df_agg = return_agged(data[~np.array(merged_subset)], which)
-    else:
-        df_agg = return_agged(data, which)
-        
-    # add single valued column
-    df_agg['group'] = 'Full Class'
+        df = df[~merged_mask]
+    elif (merged_subset is not None) and show_merged:
+        df.loc[merged_mask, 'category'] = 'merged'
+
+    if selected.value is not None:
+        df.loc[df['student_id'] == str(selected.value), 'category'] = 'selected'
+
+    df_agg = return_agged(df, which)
+    
     if len(df_agg) == 0:
         xmin, xmax = 0, 1
     else:
@@ -69,38 +77,40 @@ def AgeHoHistogram(data, selected = solara.Reactive(None), which = 'age', subset
         border_color = "#444"
         bgcolor = "#efefef"
         plot_bgcolor = "white"
-        
-    if subset is None:
-        main_label = "Your Class"
-        main_color = subset_color
-    
-    # for students in the merged class, let's remove the student_id so doesn't show up in hover
-    if (merged_subset is not None) and include_merged:
-        merged_student_ids = set(data['student_id'][merged_subset].to_list())
-        # id_string = df_agg['student_id'].to_list() # the result of sids_agg is a string with <br> separated student ids // we need to filter out those in the merged class
-        # new_id_string = []
-        for row in range(len(df_agg)):
-            sids = df_agg.at[row, 'student_id'].split('<br>')
-            names = df_agg.at[row, 'name'].split('<br>')
-            filtered_sids = [sid for sid in sids if sid not in merged_student_ids]
-            # want to filer names via index of sids
-            filtered_names = [names[i] for i in range(len(sids)) if sids[i] not in merged_student_ids]
-            if len(filtered_sids) == 0:
-                df_agg.at[row, 'student_id'] = ''
-                df_agg.at[row, 'name'] = ''
-            else:
-                df_agg.at[row, 'student_id'] = '<br>'.join(filtered_sids)
-                df_agg.at[row, 'name'] = '<br>'.join(filtered_names)
-        
-    fig = px.bar(data_frame = df_agg, x = which, y='count', hover_data='name', labels = labels, barmode='overlay', opacity=1, template=plotly_theme)
-    fig.update_traces(hovertemplate = labels[which] + ': %{x}<br>' + 'count=%{y}<br>' + labels['student_id'] + ': %{customdata}' + '<extra></extra>', width=0.8)
 
-    if subset is None:
-        main_color = subset_color
-        main_label = "Your Class"
+    # Category display names, colors, and stack order (bottom -> top)
+    cat_labels = {
+        'merged': 'Merged Class',
+        'in_class': 'Your Class',
+        'selected': str(selected.value) if selected.value is not None else 'Selected',
+    }
+    cat_colors = {
+        'merged': merged_color,
+        'in_class': subset_color,
+        'selected': '#FF8A65',
+    }
 
-    fig.update_traces(marker_color=main_color)
-    fig.add_trace(go.Bar(x=[None], y=[None], name = main_label, marker_color = main_color))
+    df_agg['category_label'] = df_agg['category'].map(cat_labels)
+    stack_order = [cat_labels[c] for c in ('in_class', 'selected','merged') if c in df_agg['category'].values]
+    color_map = {cat_labels[k]: v for k, v in cat_colors.items()}
+
+    fig = px.bar(
+        data_frame = df_agg, 
+        x = which, 
+        y='count', 
+        color='category_label',
+        custom_data=['name'], 
+        labels = labels, 
+        barmode='stack', 
+        opacity=1,
+        template=plotly_theme, 
+        category_orders={'category_label': stack_order}, # not the value, but the "label" order !?
+        color_discrete_map=color_map
+        )
+
+    hovertemplate = labels[which] + ': %{x}<br>' + 'count=%{y}<br>' + labels['name'] + ': %{customdata[0]}' + '<extra></extra>'
+    fig.update_traces(hovertemplate=hovertemplate, width=0.8)
+
     title = f'Class {which.capitalize()}<br>Distribution' if title is None else title
     fig.update_layout(showlegend=True, title_text=title, xaxis_showgrid=False, yaxis_showgrid=False, plot_bgcolor=plot_bgcolor)
     # show only integers on y-axis
@@ -108,54 +118,8 @@ def AgeHoHistogram(data, selected = solara.Reactive(None), which = 'age', subset
     # show ticks every 1
     fig.update_xaxes(range=[xmin-1.5, xmax+1.5], linecolor=axes_color)
     
-    
-    
-    if include_merged and show_merged and merged_subset is not None:
-        data_merged = data[merged_subset]
-        df_agg_merged = return_agged(data_merged, which)
-        bar = go.Bar(x=df_agg_merged[which], y=df_agg_merged['count'],
-                     name=f'Ages from merged class', 
-                     opacity=1, 
-                     width=0.8,
-                     marker_color=merged_color,
-                     hoverinfo='skip', 
-                     customdata=df_agg_merged['student_id'])
-        bar.hovertemplate = labels[which] + ': %{x}<br>' + 'count=%{y}<br>' + labels['student_id'] + ': %{customdata}' + '<extra></extra>'
-        fig.add_trace(bar)
-    
-    if subset is not None:
-        data_subset = data[np.array(subset) & (~np.array(merged_subset) if merged_subset is not None else True)]
-        # df_agg_subset = data_subset.groupby(which, as_index=False).agg(count=(which,'size'), student_id = ('student_id', sids_agg))
-        df_agg_subset = return_agged(data_subset, which)
-        bar = go.Bar(x=df_agg_subset[which], y=df_agg_subset['count'],
-                     name=subset_label, 
-                     opacity=1, 
-                     width=0.8,
-                     marker_color=subset_color,
-                     hoverinfo='skip', 
-                     customdata=df_agg_subset['student_id'])
-        bar.hovertemplate = labels[which] + ': %{x}<br>' + 'count=%{y}<br>' + labels['student_id'] + ': %{customdata}' + '<extra></extra>'
-        fig.add_trace(bar)
-
-    if selected.value is not None:
-        data_subset = data[data['student_id']==str(selected.value)]
-        if len(data_subset) > 0:
-            # df_agg_subset = data_subset.groupby(which, as_index=False).agg(count=(which,'size'), student_id = ('student_id', sids_agg))
-            df_agg_subset = return_agged(data_subset, which)
-            bar = go.Bar(x=df_agg_subset[which], y=df_agg_subset['count'],
-                        name=str(selected.value), 
-                        opacity=1, 
-                        width=0.8,
-                        marker_color='#FF8A65',
-                        hoverinfo='skip', 
-                        customdata=df_agg_subset['student_id'])
-            bar.hovertemplate = labels[which] + ': %{x}<br>' + 'count=%{y}<br>' + labels['student_id'] + ': %{customdata}' + '<extra></extra>'
-        
-            fig.add_trace(bar)
-
         
         # show legend
-    # fig.update_layout(showlegend=True)
     fig.update_layout(
         legend = dict(
             orientation="v",
