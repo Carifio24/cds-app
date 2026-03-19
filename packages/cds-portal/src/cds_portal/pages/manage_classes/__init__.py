@@ -370,6 +370,7 @@ def ChangeClassActivation(disabled: bool,
 
 @solara.component
 def Page():
+    router = solara.use_router()
     data = solara.use_reactive([])
     selected_rows = solara.use_reactive([])
     retrieve = solara.use_reactive(0)
@@ -381,7 +382,7 @@ def Page():
         new_classes = [
             {
                 "name": cls["name"],
-                "date": datetime.fromisoformat(cls["created"].removesuffix("Z")).strftime("%m/%d/%Y"),
+                "date": datetime.fromisoformat(cls["created"].removesuffix("Z")).strftime("%Y/%m/%d"),
                 "story": "Hubble's Law",
                 "code": cls["code"],
                 "id": cls["id"],
@@ -446,7 +447,7 @@ def Page():
                     solara.Button(
                         "Dashboard",
                         color="success",
-                        href=(
+                        on_click=lambda: router.push(
                             f"/educator-dashboard?id={selected_rows.value[0]['id']}"
                             if len(selected_rows.value) == 1
                             else "/educator-dashboard"
@@ -487,4 +488,6 @@ def Page():
                         # {"text": "Asynchronous", "value": "asynchronous"},
                     ],
                     hide_default_footer=True,
+                    sort_by=['date'],
+                    sort_desc=[True],
                 )
