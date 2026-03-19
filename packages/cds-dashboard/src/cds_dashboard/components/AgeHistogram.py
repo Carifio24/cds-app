@@ -110,6 +110,10 @@ def AgeHoHistogram(data, selected = solara.Reactive(None), which = 'age', subset
 
     hovertemplate = labels[which] + ': %{x}<br>' + 'count=%{y}<br>' + labels['name'] + ': %{customdata[0]}' + '<extra></extra>'
     fig.update_traces(hovertemplate=hovertemplate, width=0.8)
+    fig.for_each_trace(
+        lambda t: t.update(hovertemplate=labels[which] + ': %{x}<br>count=%{y}<br>Merged Students<extra></extra>'),
+        selector=dict(name=cat_labels['merged'])
+    )
 
     title = f'Class {which.capitalize()}<br>Distribution' if title is None else title
     fig.update_layout(showlegend=True, title_text=title, xaxis_showgrid=False, yaxis_showgrid=False, plot_bgcolor=plot_bgcolor)
