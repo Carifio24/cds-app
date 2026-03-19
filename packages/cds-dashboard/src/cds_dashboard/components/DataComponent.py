@@ -70,9 +70,6 @@ def get_class_subset(data, sid, class_data_students = None, ungroup = True):
     
     return subset
 
-def get_merged_subset(data, class_id):
-    return data.apply(lambda row: any(map(lambda x: x['id'] != class_id, row['student'].get('Classes', [{'id': class_id}]))),axis=1).to_list()
-
 
 @solara.component
 def DataSummary(roster: Reactive[Roster] | Roster = None, student_id = None, on_student_id = None, allow_click = True):
@@ -107,7 +104,7 @@ def DataSummary(roster: Reactive[Roster] | Roster = None, student_id = None, on_
             on_student_id(None)
     
     subset = None
-    merged_subset = get_merged_subset(data, roster.class_id)
+    merged_subset = roster.get_merged_subset(data)
 
     if not any(merged_subset):
         merged_subset = None
@@ -301,7 +298,7 @@ def DataHistogram(roster: Reactive[Roster] | Roster = None, id_col = 'student_id
     data['age'] = data['age'].apply(lambda x: around(x,0))
     
     class_data_students = None
-    merged_subset_raw = get_merged_subset(dataframe, roster.class_id)
+    merged_subset_raw = roster.get_merged_subset(dataframe)
     if len(merged_subset_raw) == 0:
         merged_subset = None
     else:
@@ -330,12 +327,12 @@ def DataHistogram(roster: Reactive[Roster] | Roster = None, id_col = 'student_id
                        subset_color = '#0097A7',
                        show_merged= True,
                        include_merged = True,
-                       merged_color= "#BBBBBB")
+                       merged_color= MERGED_COLOR)
     else:
         
         AgeHoHistogram(data, 
             merged_subset = merged_subset,
-            merged_color= "#BBBBBB",
+            merged_color= MERGED_COLOR,
             include_merged=True,
             show_merged=True,
             )

@@ -124,14 +124,15 @@ def ClassPlot(dataframe,
                                             zorder=-1,
                                             marker_color = '#80bc8d'))
                                             
-    if selected.value is not None and merged is not None:
+    if merged is not None:
         logger.debug('Adding merged trace')
         sub_data = dataframe[merged]
         hovertemplate = '<b>%{customdata}</b><br>' + xlabel + '<br>' + ylabel
+        merged_name = f'(Merged) Data seen by {selected.value}' if selected.value is not None else 'Merged students'
         fig.add_trace(go.Scatter(x= sub_data[x_col], y= sub_data[y_col], mode = 'markers',
                                             customdata = sub_data[label_col],
                                             hovertemplate = hovertemplate,
-                                            name = f'(Merged) Data seen by {selected.value}',
+                                            name = merged_name,
                                             marker_symbol = 'circle',   
                                             marker_size = 5,
                                             marker_color = merged_color))
