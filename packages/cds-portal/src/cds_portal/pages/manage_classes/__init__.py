@@ -108,11 +108,14 @@ def CreateClassDialog(on_create_clicked: callable = None):
                 )
 
                 if show_pad_option.value:
-                    info = """
-                        Would you like to pad your class's data with data from previous students?
-                        This will allow your students to dive directly into examining data in Stages 4 and 5 without waiting,
-                        but means that they will see data from students other than just their classmates
-                    """
+                    info = [
+                        "Select this option to pad your class with 12 students with completed data.",
+                        """
+                        Students need data from 12 other students to advance through the Stage 4 waiting room.
+                        Selecting this option will allow them to advance into Stage 4 immediately, but they will see
+                        data from students outside of the class.
+                        """
+                    ]
                     with solara.Row():
                         solara.Checkbox(
                             label="Pad class data",
@@ -214,7 +217,7 @@ def DeleteClassDialog(disabled: bool, on_delete_clicked: callable = None):
 
 
 @solara.component
-def InfoDialog(title: str, information: str):
+def InfoDialog(title: str, information: str | list[str]):
     active, set_active = solara.use_state(False)
 
     with rv.Dialog(
@@ -241,7 +244,11 @@ def InfoDialog(title: str, information: str):
             rv.CardTitle(children=[title])
 
             with rv.CardText():
-                solara.Div(information)
+                if isinstance(information, list):
+                    for item in information:
+                        solara.Div(item)
+                else:
+                    solara.Div(information)
 
 
 @solara.component
@@ -350,11 +357,10 @@ def ClassActionsDialog(disabled: bool,
                                       disabled=all_overridden)
                         InfoDialog(
                             title="Small class override",
-                            information="""
-                                Set the small class override for the selected classes. If a class already has the override set, there will be no effect.
-
-                                If the small class override is set, a student can advance past the stage 4 waiting room without needing data from 12 other students."
-                                """
+                            information=[
+                                "Set the small class override for the selected classes. If a class already has the override set, there will be no effect.",
+                                "If the small class override is set, a student can advance past the stage 4 waiting room without needing data from 12 other students."
+                            ],
                         )
                         rv.Alert(children=[f"This will affect {no_override_count} {no_override_classes}"],
                                  color="accent",
@@ -386,11 +392,11 @@ def ClassActionsDialog(disabled: bool,
                                       disabled=all_padded)
                         InfoDialog(
                             title="Merge students",
-                            information=f"""
-                            Pad the selected classes with 12 students. If a class has already been padded, this will have no effect.
-
-                            Unless the small class override is set, a student needs data from 12 other students to advance past the waiting room at stage 4. Selecting this option will pad the selected {padding_classes} with 12 students so that students can immediately advance past stage 4.
-                            """)
+                            information=[
+                                "Pad the selected classes with 12 students. If a class has already been padded, this will have no effect.",
+                                f"Unless the small class override is set, a student needs data from 12 other students to advance past the waiting room at stage 4. Selecting this option will pad the selected {padding_classes} with 12 students so that students can immediately advance past stage 4.",
+                            ]
+                        )
                         rv.Alert(children=[f"This will affect {padding_count} {padding_classes}"],
                              color="accent",
                              outlined=True,
