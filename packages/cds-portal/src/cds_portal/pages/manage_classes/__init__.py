@@ -25,7 +25,7 @@ def CreateClassDialog(on_create_clicked: callable = None):
     active, set_active = solara.use_state(False)  #
     text, set_text = solara.use_state("")
     stories = solara.use_reactive("")
-    expected_size, set_expected_size = solara.use_state(20)
+    expected_size = solara.use_reactive(20)
     asynchronous, set_asynchronous = solara.use_state(False)
     pad, set_pad = solara.use_state(True)
     expected_size_error = solara.use_reactive(False)
@@ -33,6 +33,20 @@ def CreateClassDialog(on_create_clicked: callable = None):
     @solara.lab.computed
     def show_pad_option():
         return stories.value == "Hubble's Law"
+
+    def on_expected_size(size: int):
+        if size <= 15:
+            set_pad(True)
+    expected_size.subscribe(on_expected_size)
+
+    @solara.lab.computed
+    def pad_disabled():
+        return expected_size.value < 12
+
+    def on_pad_disabled(disabled: bool):
+        if disabled:
+            set_pad(True)
+    pad_disabled.subscribe(on_pad_disabled)
 
     with rv.Dialog(
         v_model=active,
@@ -80,7 +94,6 @@ def CreateClassDialog(on_create_clicked: callable = None):
                 IntegerInput(
                     label="Expected size",
                     value=expected_size,
-                    on_value=set_expected_size,
                     on_error_change=expected_size_error.set,
                     continuous_update=True,
                     outlined=True,
@@ -104,6 +117,7 @@ def CreateClassDialog(on_create_clicked: callable = None):
                         label="Pad class data",
                         value=pad,
                         on_value=set_pad,
+                        disabled=pad_disabled.value,
                     )
 
             rv.Divider()
@@ -197,6 +211,37 @@ def DeleteClassDialog(disabled: bool, on_delete_clicked: callable = None):
 
 
 @solara.component
+def InfoDialog(title: str, information: str):
+    active, set_active = solara.use_state(False)
+
+    with rv.Dialog(
+        v_model=active,
+        on_v_model=set_active,
+        v_slots=[
+            {
+                "name": "activator",
+                "variable": "x",
+                "children": rv.Btn(
+                    v_on="x.on",
+                    v_bind="x.attrs",
+                    icon=True,
+                    children=[rv.Icon(children=["mdi-information-outline"])],
+                    elevation=0,
+                    color="accent",
+                    class_="ma-0",
+                )
+            }
+        ],
+        max_width=600,
+    ):
+        with rv.Card(outlined=True):
+            rv.CardTitle(children=[title])
+
+            with rv.CardText():
+                solara.Div(information)
+
+
+@solara.component
 def ClassActionsDialog(disabled: bool,
                        class_data: list[dict],
                        on_active_changed: Optional[Callable] = None):
@@ -261,7 +306,7 @@ def ClassActionsDialog(disabled: bool,
                     solara.Text(f"Set whether or not the selected {classes_string} {is_are_string} active")
                 with solara.Row():
                     any_active = any(BASE_API.get_class_active(data["id"], "hubbles_law") for data in class_data)
-                    solara.Switch(label="Set active", value=any_active, on_value=_on_active_switched)
+                    solara.Switch(label="Set active", classes=["mt-0"], value=any_active, on_value=_on_active_switched)
                     rv.Alert(children=[f"This will affect {len(class_data)} {classes_string}"],
                              color="accent",
                              outlined=True,
@@ -270,6 +315,7 @@ def ClassActionsDialog(disabled: bool,
             if "Hubble's Law" in classes_by_story:
 
                 hubble_classes = classes_by_story["Hubble's Law"]
+                hubbles_classes_string = "class" if len(hubble_classes) == 1 else "classes"
 
                 override_statuses = [BASE_API.get_hubble_waiting_room_override(data["id"])["override_status"] for data in hubble_classes]
                 all_overridden = all(override_statuses)
@@ -293,18 +339,59 @@ def ClassActionsDialog(disabled: bool,
                     _update_snackbar(message=message, color=color)
 
                 with rv.Container():
-                    with rv.CardText():
-                        solara.Text("Set the small class override for the selected classes. If a class already has the override set, there will be no effect.")
                     with solara.Row():
                         no_override_count = len(hubble_classes) - sum(override_statuses)
                         no_override_classes = "class" if no_override_count == 1 else "classes"
                         solara.Button(label="Set override",
                                       on_click=_on_override_button_pressed,
                                       disabled=all_overridden)
+                        InfoDialog(
+                            title="Small class override",
+                            information="""
+                                Set the small class override for the selected classes. If a class already has the override set, there will be no effect.
+
+                                If the small class override is set, a student can advance past the stage 4 waiting room without needing data from 12 other students."
+                                """
+                        )
                         rv.Alert(children=[f"This will affect {no_override_count} {no_override_classes}"],
                                  color="accent",
                                  outlined=True,
                                  dense=True)
+
+                def _on_padding_button_pressed(*args):
+                    failures = []
+                    for data in hubble_classes:
+                        class_id = data["id"]
+                        result = BASE_API.pad_class(class_id)
+                        if not result:
+                            failures.append(class_id)
+
+                    color = "error" if failures else "success"
+                    ids_string = ", ".join(str(cid) for cid in failures)
+                    message = f"There was an error padding classes {ids_string}" if failures else "Classes padded succesfully"
+                    _update_snackbar(message=message, color=color)
+
+                padded_classes = [BASE_API.get_merged_students_count(data["id"]) >= 12 for data in hubble_classes]
+                all_padded = all(padded_classes)
+
+                padding_count = len(hubble_classes) - sum(padded_classes)
+                padding_classes = "class" if padding_count == 1 else "classes"
+                with rv.Container():
+                    with solara.Row():
+                        solara.Button(label=f"Pad {hubbles_classes_string}",
+                                      on_click=_on_padding_button_pressed,
+                                      disabled=all_padded)
+                        InfoDialog(
+                            title="Merge students",
+                            information=f"""
+                            Pad the selected classes with 12 students. If a class has already been padded, this will have no effect.
+
+                            Unless the small class override is set, a student needs data from 12 other students to advance past the waiting room at stage 4. Selecting this option will pad the selected {padding_classes} with 12 students so that students can immediately advance past stage 4.
+                            """)
+                        rv.Alert(children=[f"This will affect {padding_count} {padding_classes}"],
+                             color="accent",
+                             outlined=True,
+                             dense=True)
 
                 rv.Spacer()
 
@@ -430,11 +517,11 @@ def Page():
 
             with rv.Row(class_="class_buttons mb-2 mx-0"):
 
-                # ClassActionsDialog(
-                #     disabled = len(selected_rows.value) == 0, 
-                #     class_data = selected_rows.value,
-                #     on_active_changed=lambda *args: retrieve.set(retrieve.value + 1)
-                # )
+                ClassActionsDialog(
+                    disabled = len(selected_rows.value) == 0, 
+                    class_data = selected_rows.value,
+                    on_active_changed=lambda *args: retrieve.set(retrieve.value + 1)
+                )
                 solara.Button(
                     "Educator Preview",
                     text=False,
