@@ -108,17 +108,20 @@ def CreateClassDialog(on_create_clicked: callable = None):
                 )
 
                 if show_pad_option.value:
-                    solara.Text("""
+                    info = """
                         Would you like to pad your class's data with data from previous students?
                         This will allow your students to dive directly into examining data in Stages 4 and 5 without waiting,
                         but means that they will see data from students other than just their classmates
-                    """)
-                    solara.Checkbox(
-                        label="Pad class data",
-                        value=pad,
-                        on_value=set_pad,
-                        disabled=pad_disabled.value,
-                    )
+                    """
+                    with solara.Row():
+                        solara.Checkbox(
+                            label="Pad class data",
+                            value=pad,
+                            on_value=set_pad,
+                            disabled=pad_disabled.value,
+                            style="margin-top: 0;",
+                        )
+                        InfoDialog(title="Pad class data", information=info)
 
             rv.Divider()
 
