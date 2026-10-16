@@ -1,4 +1,4 @@
-terraform {
+terraform {main
   required_version = ">= 1.0"
 
   required_providers {
@@ -20,10 +20,7 @@ module "app_stack" {
   environment                       = var.environment
   site_domain_name                  = var.site_domain_name
   certificate_domain                = var.certificate_domain
-  cds_portal_image                  = var.cds_portal_image
   cds_hubble_image                  = var.cds_hubble_image
-  cds_portal_min_capacity           = var.cds_portal_min_capacity
-  cds_portal_max_capacity           = var.cds_portal_max_capacity
   cds_hubble_min_capacity           = var.cds_hubble_min_capacity
   cds_hubble_max_capacity           = var.cds_hubble_max_capacity
   enable_autoscaling                = var.enable_autoscaling
@@ -32,12 +29,8 @@ module "app_stack" {
   use_private_service_subnets       = var.use_private_service_subnets
   create_private_nat_gateways       = var.create_private_nat_gateways
   log_group_class                   = var.log_group_class
-  cds_portal_cpu                    = var.cds_portal_cpu
-  cds_portal_memory                 = var.cds_portal_memory
   cds_hubble_cpu                    = var.cds_hubble_cpu
   cds_hubble_memory                 = var.cds_hubble_memory
-  portal_environment_vars           = var.portal_environment_vars
   hubble_environment_vars           = var.hubble_environment_vars
-  portal_secret_names               = var.portal_secret_names
   hubble_secret_names               = var.hubble_secret_names
 }
