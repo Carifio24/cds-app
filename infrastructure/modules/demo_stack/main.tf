@@ -196,11 +196,11 @@ resource "aws_lb_listener" "https" {
   port              = "443"
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  certificate_arn   = data.aws_acm_certificate.site.arn
+  certificate_arn   = data.aws_acm_certificate.site[0].arn
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.cds_portal.arn
+    target_group_arn = aws_lb_target_group.hubble.arn
   }
 
   tags = {
