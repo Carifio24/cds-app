@@ -122,6 +122,12 @@ variable "app_log_retention_days" {
   default     = 3
 }
 
+variable "cloudfront_origin_protocol_policy" {
+  description = "Protocol policy CloudFront uses when connecting to the ALB origin"
+  type        = string
+  default     = "https-only"
+}
+
 variable "http_listener_redirect_to_https" {
   description = "Whether the ALB HTTP listener redirects to HTTPS instead of forwarding to services"
   type        = bool

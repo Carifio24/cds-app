@@ -3,8 +3,8 @@ environment = "demo"
 
 # Leave these empty while the current production CloudFront distribution owns
 # app.cosmicds.cfa.harvard.edu. Set both values during the final DNS cutover.
-site_domain_name   = ""
-certificate_domain = ""
+site_domain_name   = "app.cosmicds.cfa.harvard.edu"
+certificate_domain = "app.cosmicds.cfa.harvard.edu"
 
 github_repository = "cosmicds/cds-app"
 github_branch     = "main"
