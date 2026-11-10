@@ -78,6 +78,14 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -162,13 +170,49 @@ resource "aws_lb_listener" "http" {
   port              = 80
   protocol          = "HTTP"
 
+  dynamic "default_action" {
+    for_each = var.http_listener_redirect_to_https ? [1] : []
+
+    content {
+      type = "redirect"
+
+      redirect {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+  }
+
+  dynamic "default_action" {
+    for_each = var.http_listener_redirect_to_https ? [] : [1]
+
+    content {
+      type             = "forward"
+      target_group_arn = aws_lb_target_group.hubble.arn
+    }
+  }
+
+  tags = {
+    Name        = "${var.environment}-http-listener"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = data.aws_acm_certificate.site[0].arn
+
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.hubble.arn
   }
 
   tags = {
-    Name        = "${var.environment}-http-listener"
+    Name        = "${var.environment}-https-listener"
     Environment = var.environment
   }
 }
@@ -187,7 +231,7 @@ resource "aws_cloudfront_distribution" "demo" {
     custom_origin_config {
       http_port                = 80
       https_port               = 443
-      origin_protocol_policy   = "http-only"
+      origin_protocol_policy = var.cloudfront_origin_protocol_policy
       origin_ssl_protocols     = ["TLSv1.2"]
       origin_keepalive_timeout = 60
       origin_read_timeout      = 60
@@ -373,7 +417,7 @@ resource "aws_ecs_service" "hubble" {
     container_port   = 8765
   }
 
-  depends_on = [aws_lb_listener.http]
+  depends_on = [aws_lb_listener.https]
 
   tags = {
     Name        = "${var.environment}-cds-hubble-service"

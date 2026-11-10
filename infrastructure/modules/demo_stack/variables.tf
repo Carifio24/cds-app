@@ -12,7 +12,7 @@ variable "environment" {
 variable "site_domain_name" {
   description = "Optional custom hostname for CloudFront; leave empty during the initial parallel deployment"
   type        = string
-  default     = ""
+  default     = "app.cosmicds.cfa.harvard.edu"
 }
 
 variable "certificate_domain" {
@@ -120,4 +120,16 @@ variable "app_log_retention_days" {
   description = "Retention period for demo application logs"
   type        = number
   default     = 3
+}
+
+variable "cloudfront_origin_protocol_policy" {
+  description = "Protocol policy CloudFront uses when connecting to the ALB origin"
+  type        = string
+  default     = "https-only"
+}
+
+variable "http_listener_redirect_to_https" {
+  description = "Whether the ALB HTTP listener redirects to HTTPS instead of forwarding to services"
+  type        = bool
+  default     = true
 }
